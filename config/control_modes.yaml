@@ -1,0 +1,33 @@
+#----------------------------------------------------------------------------
+# ArduPilot control modes depend on the vehicle type. These are given
+# by the FLTMODEn parameter:
+# https://ardupilot.org/copter/docs/parameters.html#fltmode1-flight-mode-1
+#
+#
+#----------------------------------------------------------------------------
+
+available_modes:
+  - 0  # Stabilize
+  - 1  # Acro
+  - 2  # AltHold
+  - 3  # Auto
+  - 4  # Guided
+  - 5  # Loiter
+  - 7  # Circle
+  - 9  # Land
+  - 11 # Drift
+  - 13 # Sport
+  - 14 # Flip
+  - 15 # AutoTune
+  - 16 # PosHold
+  - 17 # Brake
+  - 18 # Throw
+  - 19 # Avoid_ADSB
+  - 20 # Guided_NoGPS
+  - 21 # SmartRTL
+  - 22 # FlowHold
+  - 23 # Follow
+  - 24 # ZigZag
+  - 25 # SystemID
+  - 26 # HeliAutorotate
+  - 27 # AutoRTL
