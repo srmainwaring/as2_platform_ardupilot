@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>Aerostack platform for ArduPilot</description>
   <maintainer email="rhys.mainwaring@me.com">Rhys Mainwaring</maintainer>
-  <license>TODO: License declaration</license>
+  <license>GPL-3.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
