@@ -38,13 +38,40 @@ ArduPilotPlatform::ArduPilotPlatform()
 
   // create static transforms
 
+  // create subscribers
+  ap_nav_sat_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>(
+      "/ap/navsat/navsat0", rclcpp::SensorDataQoS(),
+      std::bind(&ArduPilotPlatform::apNavSatFixCallback, this, std::placeholders::_1));
 
-  // create ardupilot_dds subscribers
+  ap_battery_sub_ = create_subscription<sensor_msgs::msg::BatteryState>(
+      "/ap/battery/battery0", rclcpp::SensorDataQoS(),
+      std::bind(&ArduPilotPlatform::apBatteryCallback, this, std::placeholders::_1));
 
+  ap_imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+      "/ap/imu/experimental/data", rclcpp::SensorDataQoS(),
+      std::bind(&ArduPilotPlatform::apImuCallback, this, std::placeholders::_1));
 
-  // create ardupilot_dds publishers
+  ap_pose_filtered_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+      "/ap/pose/filtered", rclcpp::SensorDataQoS(),
+      std::bind(&ArduPilotPlatform::apPoseFilteredCallback, this, std::placeholders::_1));
 
-  // 
+  ap_twist_filtered_sub_ = create_subscription<geometry_msgs::msg::TwistStamped>(
+      "/ap/twist/filtered", rclcpp::SensorDataQoS(),
+      std::bind(&ArduPilotPlatform::apTwistFilteredCallback, this, std::placeholders::_1));
+
+  // create publishers
+  ap_cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
+    "/ap/cmd_vel", rclcpp::SensorDataQoS());
+
+  ap_cmd_gps_pose_pub_ = this->create_publisher<ardupilot_msgs::msg::GlobalPosition>(
+    "/ap/cmd_vel", rclcpp::SensorDataQoS());
+
+  // create service clients 
+  ap_arm_motors_client_ =
+    create_client<ardupilot_msgs::srv::ArmMotors>("/ap/arm_motors");
+
+  ap_mode_switch_client_ =
+    create_client<ardupilot_msgs::srv::ModeSwitch>("/ap/mode_switch");
 
 }
 
@@ -92,6 +119,63 @@ bool ArduPilotPlatform::ownTakeoff()
 bool ArduPilotPlatform::ownLand()
 {
   return false;
+}
+
+
+void ArduPilotPlatform::apArm()
+{
+  // make the service call
+
+  // wait
+
+  // check status
+
+  RCLCPP_DEBUG(this->get_logger(), "Sent arm command");
+}
+
+void ArduPilotPlatform::apDisarm()
+{
+  RCLCPP_DEBUG(this->get_logger(), "Sent disarm command");
+}
+
+void ArduPilotPlatform::apPublishOffboardControlMode()
+{
+}
+
+void ArduPilotPlatform::apPublishTrajectorySetpoint()
+{
+}
+
+void ArduPilotPlatform::apPublishAttitudeSetpoint()
+{
+}
+
+void ArduPilotPlatform::apPublishRatesSetpoint()
+{
+}
+
+void ArduPilotPlatform::apPublishVehicleCommand()
+{
+}
+
+void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::SharedPtr /*msg*/)
+{
+}
+
+void ArduPilotPlatform::apBatteryCallback(const sensor_msgs::msg::BatteryState::SharedPtr /*msg*/)
+{
+}
+
+void ArduPilotPlatform::apImuCallback(const sensor_msgs::msg::Imu::SharedPtr /*msg*/)
+{
+}
+
+void ArduPilotPlatform::apPoseFilteredCallback(const geometry_msgs::msg::PoseStamped::SharedPtr /*msg*/)
+{
+}
+
+void ArduPilotPlatform::apTwistFilteredCallback(const geometry_msgs::msg::TwistStamped::SharedPtr /*msg*/)
+{
 }
 
 } // namespace ardupilot_platform

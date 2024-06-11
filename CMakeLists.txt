@@ -51,6 +51,15 @@ target_include_directories(${PROJECT_NAME}_node
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"  
 )
 
+ament_target_dependencies(${PROJECT_NAME}_node
+  ardupilot_msgs
+  as2_msgs
+  geometry_msgs
+  sensor_msgs
+  std_msgs
+  std_srvs
+)
+
 target_link_libraries(${PROJECT_NAME}_node
   as2_core::as2_core
   GeographicLib::GeographicLib
