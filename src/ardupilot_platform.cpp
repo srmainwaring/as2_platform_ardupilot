@@ -17,10 +17,13 @@
 
 #include "as2_platform_ardupilot/ardupilot_platform.hpp"
 
+#include <chrono>
 #include <memory>
 #include <string>
 
 #include <as2_core/utils/tf_utils.hpp>
+
+using namespace std::chrono_literals;
 
 namespace ardupilot_platform
 {
@@ -39,23 +42,23 @@ ArduPilotPlatform::ArduPilotPlatform()
   // create static transforms
 
   // create subscribers
-  ap_nav_sat_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>(
+  ap_nav_sat_sub_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
       "/ap/navsat/navsat0", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apNavSatFixCallback, this, std::placeholders::_1));
 
-  ap_battery_sub_ = create_subscription<sensor_msgs::msg::BatteryState>(
+  ap_battery_sub_ = this->create_subscription<sensor_msgs::msg::BatteryState>(
       "/ap/battery/battery0", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apBatteryCallback, this, std::placeholders::_1));
 
-  ap_imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+  ap_imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
       "/ap/imu/experimental/data", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apImuCallback, this, std::placeholders::_1));
 
-  ap_pose_filtered_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+  ap_pose_filtered_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
       "/ap/pose/filtered", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apPoseFilteredCallback, this, std::placeholders::_1));
 
-  ap_twist_filtered_sub_ = create_subscription<geometry_msgs::msg::TwistStamped>(
+  ap_twist_filtered_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
       "/ap/twist/filtered", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apTwistFilteredCallback, this, std::placeholders::_1));
 
@@ -64,14 +67,14 @@ ArduPilotPlatform::ArduPilotPlatform()
     "/ap/cmd_vel", rclcpp::SensorDataQoS());
 
   ap_cmd_gps_pose_pub_ = this->create_publisher<ardupilot_msgs::msg::GlobalPosition>(
-    "/ap/cmd_vel", rclcpp::SensorDataQoS());
+    "/ap/cmd_gps_pose", rclcpp::SensorDataQoS());
 
   // create service clients 
   ap_arm_motors_client_ =
-    create_client<ardupilot_msgs::srv::ArmMotors>("/ap/arm_motors");
+    this->create_client<ardupilot_msgs::srv::ArmMotors>("/ap/arm_motors");
 
   ap_mode_switch_client_ =
-    create_client<ardupilot_msgs::srv::ModeSwitch>("/ap/mode_switch");
+    this->create_client<ardupilot_msgs::srv::ModeSwitch>("/ap/mode_switch");
 
 }
 
@@ -88,9 +91,15 @@ bool ArduPilotPlatform::ownSendCommand()
   return false;
 }
 
-bool ArduPilotPlatform::ownSetArmingState(bool /*state*/)
+bool ArduPilotPlatform::ownSetArmingState(bool state)
 {
-  return false;
+  if (state) {
+    this->apArm();
+  } else {
+    // set_disarm_ = true;
+    this->apDisarm();
+  }
+  return true;
 }
 
 bool ArduPilotPlatform::ownSetOffboardControl(bool /*offboard*/)
@@ -124,18 +133,50 @@ bool ArduPilotPlatform::ownLand()
 
 void ArduPilotPlatform::apArm()
 {
-  // make the service call
+  auto request = std::make_shared<ardupilot_msgs::srv::ArmMotors::Request>();
+  request->arm = true;
 
-  // wait
+  if (!ap_arm_motors_client_->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
+        << ap_arm_motors_client_->get_service_name()
+        << "] not available.");
+    return;
+  }
 
-  // check status
-
-  RCLCPP_DEBUG(this->get_logger(), "Sent arm command");
+  bool got_response = false;
+  using ServiceResponseFuture =
+      rclcpp::Client<ardupilot_msgs::srv::ArmMotors>::SharedFuture;
+  auto callback = [&got_response, this](ServiceResponseFuture future) {
+    got_response = true;
+    auto result = future.get();
+    RCLCPP_INFO_STREAM(this->get_logger(), "Arm request status: "
+        << result->result);
+  };
+  auto future = ap_arm_motors_client_->async_send_request(request, callback);
 }
 
 void ArduPilotPlatform::apDisarm()
 {
-  RCLCPP_DEBUG(this->get_logger(), "Sent disarm command");
+  auto request = std::make_shared<ardupilot_msgs::srv::ArmMotors::Request>();
+  request->arm = false;
+
+  if (!ap_arm_motors_client_->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
+        << ap_arm_motors_client_->get_service_name()
+        << "] not available.");
+    return;
+  }
+
+  bool got_response = false;
+  using ServiceResponseFuture =
+      rclcpp::Client<ardupilot_msgs::srv::ArmMotors>::SharedFuture;
+  auto callback = [&got_response, this](ServiceResponseFuture future) {
+    got_response = true;
+    auto result = future.get();
+    RCLCPP_INFO_STREAM(this->get_logger(), "Disarm request status: "
+        << result->result);
+  };
+  auto future = ap_arm_motors_client_->async_send_request(request, callback);
 }
 
 void ArduPilotPlatform::apPublishOffboardControlMode()
