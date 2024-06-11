@@ -17,12 +17,35 @@
 
 #include "as2_platform_ardupilot/ardupilot_platform.hpp"
 
+#include <memory>
+#include <string>
+
+#include <as2_core/utils/tf_utils.hpp>
+
 namespace ardupilot_platform
 {
 
 ArduPilotPlatform::ArduPilotPlatform()
   : as2::AerialPlatform()
 {
+  // dev guide states it is not necessary to call configureSensors, but it
+  // is called in the PX4 platform?
+  // configureSensors();
+
+  // generate frame ids
+  base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
+  odom_frame_id_ = as2::tf::generateTfName(this, "odom");
+
+  // create static transforms
+
+
+  // create ardupilot_dds subscribers
+
+
+  // create ardupilot_dds publishers
+
+  // 
+
 }
 
 ArduPilotPlatform::~ArduPilotPlatform()
@@ -38,17 +61,17 @@ bool ArduPilotPlatform::ownSendCommand()
   return false;
 }
 
-bool ArduPilotPlatform::ownSetArmingState(bool state)
+bool ArduPilotPlatform::ownSetArmingState(bool /*state*/)
 {
   return false;
 }
 
-bool ArduPilotPlatform::ownSetOffboardControl(bool offboard)
+bool ArduPilotPlatform::ownSetOffboardControl(bool /*offboard*/)
 {
   return false;
 }
 
-bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &msg)
+bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &/*msg*/)
 {
   return false;
 }
