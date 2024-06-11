@@ -9,6 +9,8 @@ endif()
 # dependencies
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+
 find_package(as2_core REQUIRED)
 find_package(rclcpp REQUIRED)
 
@@ -72,17 +74,25 @@ endif()
 #----------------------------------------------------------------------------
 # install
 
+# install launch files.
 install(DIRECTORY
   launch
   DESTINATION share/${PROJECT_NAME})
 
+# install config.
 install(DIRECTORY
   config
   DESTINATION share/${PROJECT_NAME})
 
+# install executables.
 install(TARGETS
   ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME})
+
+# install Python package.
+  ament_python_install_package(${PROJECT_NAME}
+  PACKAGE_DIR src/${PROJECT_NAME}
+)
 
 #----------------------------------------------------------------------------
 # ament_package last
