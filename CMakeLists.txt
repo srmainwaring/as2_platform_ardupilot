@@ -19,6 +19,39 @@ find_package(std_srvs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 
+if (APPLE)
+  # macOS Sonoma 14.5 aarch64 transitive dependency issue
+  find_package(GeographicLib REQUIRED)
+  find_package(yaml-cpp REQUIRED)
+
+  # assuming yaml-cpp installed with brew
+  if (CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    link_directories("/opt/homebrew/opt/yaml-cpp/lib")
+  elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    link_directories("/usr/local/opt/yaml-cpp/lib")
+  endif()
+
+endif()
+
+#----------------------------------------------------------------------------
+# build
+
+add_executable(${PROJECT_NAME}_node
+  src/ardupilot_platform_main.cpp
+  src/ardupilot_platform.cpp
+)
+
+target_include_directories(${PROJECT_NAME}_node
+  PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"  
+)
+
+target_link_libraries(${PROJECT_NAME}_node
+  as2_core::as2_core
+  GeographicLib::GeographicLib
+)
+
 #----------------------------------------------------------------------------
 # testing
 
@@ -36,5 +69,20 @@ endif()
 
 #----------------------------------------------------------------------------
 # install
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME})
+
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME})
+
+install(TARGETS
+  ${PROJECT_NAME}_node
+  DESTINATION lib/${PROJECT_NAME})
+
+#----------------------------------------------------------------------------
+# ament_package last
 
 ament_package()
