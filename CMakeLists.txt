@@ -11,6 +11,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(as2_core REQUIRED)
 find_package(rclcpp REQUIRED)
+
+find_package(ardupilot_msgs REQUIRED)
 find_package(as2_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
