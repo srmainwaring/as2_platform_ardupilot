@@ -19,6 +19,7 @@
 #define ARDUPILOT_PLATFORM_HPP_
 
 #include <memory>
+#include <string>
 
 #include <as2_core/aerial_platform.hpp>
 #include <as2_core/node.hpp>
@@ -40,6 +41,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_srvs/srv/set_bool.hpp>
+// #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 
 namespace ardupilot_platform
@@ -70,6 +72,9 @@ public:
   // rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr twist_state_sub_;
 
 private:
+  std::string base_link_frame_id_;
+  std::string odom_frame_id_;
+
   // as2_msgs::msg::ControlMode control_in_;
   // double yaw_rate_limit_ = M_PI_2;
 
