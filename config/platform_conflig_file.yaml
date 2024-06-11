@@ -1,0 +1,8 @@
+/**:
+  ros_parameters:
+    cmd_freq: 100.0  # freq platform publishes commands (Hz)
+    info_freq: 10.0  # freq platform publishes info (Hz)
+    mass: 1.0  # mass of vehicle (kg)
+    max_thrust: 15.0  # max thrust (N)
+    min_thrust: 0.15  # min thrust (N)
+    external_odom: false  # use an external odometry source
