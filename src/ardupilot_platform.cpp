@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 
+#include <as2_core/sensor.hpp>
 #include <as2_core/utils/tf_utils.hpp>
 
 using namespace std::chrono_literals;
@@ -33,11 +34,32 @@ ArduPilotPlatform::ArduPilotPlatform()
 {
   // dev guide states it is not necessary to call configureSensors, but it
   // is called in the PX4 platform?
-  // configureSensors();
+  configureSensors();
 
   // generate frame ids
   base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
   odom_frame_id_ = as2::tf::generateTfName(this, "odom");
+
+  // declare parameters - is this required for ArduPilot?
+  this->declare_parameter<float>("mass");
+  mass_ = this->get_parameter("mass").as_double();
+
+  this->declare_parameter<float>("max_thrust");
+  max_thrust_ = this->get_parameter("max_thrust").as_double();
+
+  this->declare_parameter<float>("min_thrust");
+  min_thrust_ = this->get_parameter("min_thrust").as_double();
+
+  this->declare_parameter<bool>("use_external_odom");
+  use_external_odom_ = this->get_parameter("use_external_odom").as_bool();
+
+  RCLCPP_INFO(this->get_logger(), "Use sim time: %s",
+      this->get_parameter("use_sim_time").as_bool() ? "true" : "false");
+  RCLCPP_INFO(this->get_logger(), "Mass: %f", mass_);
+  RCLCPP_INFO(this->get_logger(), "Max thrust: %f", max_thrust_);
+  RCLCPP_INFO(this->get_logger(), "Min thrust: %f", min_thrust_);
+  RCLCPP_INFO(this->get_logger(), "Use external odometry: %s",
+      use_external_odom_ ? "true" : "false");
 
   // create static transforms
 
@@ -84,6 +106,12 @@ ArduPilotPlatform::~ArduPilotPlatform()
 
 void ArduPilotPlatform::configureSensors()
 {
+  barometer0_ = std::make_unique<as2::sensors::Barometer>("barometer0", this);
+  battery0_ = std::make_unique<as2::sensors::Battery>("battery0", this);
+  compass0_ = std::make_unique<as2::sensors::Compass>("compass0", this);
+  gps0_ = std::make_unique<as2::sensors::GPS>("gps0", this);
+  imu0_ = std::make_unique<as2::sensors::Imu>("imu0", this);
+  odometry_filtered_ = std::make_unique<as2::sensors::Odometry>("odom", this);
 }
 
 bool ArduPilotPlatform::ownSendCommand()
@@ -114,10 +142,12 @@ bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMo
 
 void ArduPilotPlatform::ownKillSwitch()
 {
+  RCLCPP_ERROR(this->get_logger(), "Kill switch not supported");
 }
 
 void ArduPilotPlatform::ownStopPlatform()
 {
+  RCLCPP_ERROR(this->get_logger(), "Stop platform not supported");
 }
 
 bool ArduPilotPlatform::ownTakeoff()
