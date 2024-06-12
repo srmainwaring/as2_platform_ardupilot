@@ -76,13 +76,19 @@ ArduPilotPlatform::ArduPilotPlatform()
       "/ap/imu/experimental/data", rclcpp::SensorDataQoS(),
       std::bind(&ArduPilotPlatform::apImuCallback, this, std::placeholders::_1));
 
-  ap_pose_filtered_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-      "/ap/pose/filtered", rclcpp::SensorDataQoS(),
-      std::bind(&ArduPilotPlatform::apPoseFilteredCallback, this, std::placeholders::_1));
+  // message filters
+  ap_pose_filtered_sub_ =
+      std::make_unique<message_filters::Subscriber<geometry_msgs::msg::PoseStamped>>(
+          this, "/ap/pose/filtered");
 
-  ap_twist_filtered_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
-      "/ap/twist/filtered", rclcpp::SensorDataQoS(),
-      std::bind(&ArduPilotPlatform::apTwistFilteredCallback, this, std::placeholders::_1));
+  ap_twist_filtered_sub_ =
+      std::make_unique<message_filters::Subscriber<geometry_msgs::msg::TwistStamped>>(
+          this, "/ap/twist/filtered");
+
+  ap_odom_sync_ = std::make_unique<message_filters::TimeSynchronizer<geometry_msgs::msg::PoseStamped, geometry_msgs::msg::TwistStamped>>(
+      *ap_pose_filtered_sub_, *ap_twist_filtered_sub_, 5);
+  ap_odom_sync_->registerCallback(
+      std::bind(&ArduPilotPlatform::apOdomCallback, this, std::placeholders::_1, std::placeholders::_2));
 
   // create publishers
   ap_cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
@@ -97,7 +103,6 @@ ArduPilotPlatform::ArduPilotPlatform()
 
   ap_mode_switch_client_ =
     this->create_client<ardupilot_msgs::srv::ModeSwitch>("/ap/mode_switch");
-
 }
 
 ArduPilotPlatform::~ArduPilotPlatform()
@@ -116,6 +121,13 @@ void ArduPilotPlatform::configureSensors()
 
 bool ArduPilotPlatform::ownSendCommand()
 {
+  // current control mode
+  // as2_msgs::msg::ControlMode platform_control_mode = this->getControlMode();
+
+
+  // ap_cmd_vel_;
+
+  RCLCPP_ERROR(this->get_logger(), "Send command not supported");
   return false;
 }
 
@@ -132,11 +144,34 @@ bool ArduPilotPlatform::ownSetArmingState(bool state)
 
 bool ArduPilotPlatform::ownSetOffboardControl(bool /*offboard*/)
 {
-  return false;
+  RCLCPP_DEBUG(this->get_logger(), "Switching to GUIDED mode");
+
+  //! @todo(srmainwaring) the PX4 platform sets a rate setpoint 10x
+  //  before switching to guided. Not replicated here.   
+  apSetModeToGuided();
+  return true;
 }
 
-bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &/*msg*/)
+bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &msg)
 {
+  switch (msg.control_mode) {
+    case as2_msgs::msg::ControlMode::POSITION: {
+      RCLCPP_INFO(this->get_logger(), "POSITION mode enabled");
+    } break;
+    case as2_msgs::msg::ControlMode::SPEED: {
+      RCLCPP_INFO(this->get_logger(), "SPEED mode enabled");
+    } break;
+    case as2_msgs::msg::ControlMode::ATTITUDE: {
+      RCLCPP_INFO(this->get_logger(), "ATTITUDE mode enabled");
+    } break;
+    default:
+      RCLCPP_WARN(this->get_logger(), "Control mode %s not supported",
+          as2::control_mode::controlModeToString(msg).c_str());
+      is_valid_mode_ = false;
+      return false;
+  }
+
+  is_valid_mode_ = true;
   return false;
 }
 
@@ -152,11 +187,13 @@ void ArduPilotPlatform::ownStopPlatform()
 
 bool ArduPilotPlatform::ownTakeoff()
 {
+  RCLCPP_ERROR(this->get_logger(), "Takeoff not supported");
   return false;
 }
 
 bool ArduPilotPlatform::ownLand()
 {
+  RCLCPP_ERROR(this->get_logger(), "Land not supported");
   return false;
 }
 
@@ -209,8 +246,30 @@ void ArduPilotPlatform::apDisarm()
   auto future = ap_arm_motors_client_->async_send_request(request, callback);
 }
 
-void ArduPilotPlatform::apPublishOffboardControlMode()
+void ArduPilotPlatform::apSetModeToGuided()
 {
+  auto request = std::make_shared<ardupilot_msgs::srv::ModeSwitch::Request>();
+  request->mode = 4; // GUIDED = 4 for Copter
+
+  if (!ap_mode_switch_client_->wait_for_service(1s)) {
+    RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
+        << ap_mode_switch_client_->get_service_name()
+        << "] not available.");
+    return;
+  }
+
+  bool got_response = false;
+  using ServiceResponseFuture =
+      rclcpp::Client<ardupilot_msgs::srv::ModeSwitch>::SharedFuture;
+  auto callback = [&got_response, this](ServiceResponseFuture future) {
+    got_response = true;
+    auto result = future.get();
+    RCLCPP_INFO_STREAM(this->get_logger(), "Mode switch request status: "
+        << result->status);
+    RCLCPP_INFO_STREAM(this->get_logger(), "Current mode: "
+        << result->curr_mode);
+  };
+  auto future = ap_mode_switch_client_->async_send_request(request, callback);
 }
 
 void ArduPilotPlatform::apPublishTrajectorySetpoint()
@@ -229,24 +288,47 @@ void ArduPilotPlatform::apPublishVehicleCommand()
 {
 }
 
-void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::SharedPtr /*msg*/)
+void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
+  gps0_->updateData(*msg);
 }
 
-void ArduPilotPlatform::apBatteryCallback(const sensor_msgs::msg::BatteryState::SharedPtr /*msg*/)
+void ArduPilotPlatform::apBatteryCallback(const sensor_msgs::msg::BatteryState::ConstSharedPtr msg)
 {
+  battery0_->updateData(*msg);
 }
 
-void ArduPilotPlatform::apImuCallback(const sensor_msgs::msg::Imu::SharedPtr /*msg*/)
+void ArduPilotPlatform::apImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr msg)
 {
+  imu0_->updateData(*msg);
 }
 
-void ArduPilotPlatform::apPoseFilteredCallback(const geometry_msgs::msg::PoseStamped::SharedPtr /*msg*/)
+void ArduPilotPlatform::apOdomCallback(
+    const geometry_msgs::msg::PoseStamped::ConstSharedPtr pose_msg,
+    const geometry_msgs::msg::TwistStamped::ConstSharedPtr twist_msg)
 {
-}
+  nav_msgs::msg::Odometry odom_msg;
 
-void ArduPilotPlatform::apTwistFilteredCallback(const geometry_msgs::msg::TwistStamped::SharedPtr /*msg*/)
-{
+  odom_msg.header.stamp    = pose_msg->header.stamp;
+  odom_msg.header.frame_id = odom_frame_id_;
+  odom_msg.child_frame_id  = base_link_frame_id_;
+
+  odom_msg.pose.pose.position.x = pose_msg->pose.position.x;
+  odom_msg.pose.pose.position.y = pose_msg->pose.position.y;
+  odom_msg.pose.pose.position.z = pose_msg->pose.position.z;
+  odom_msg.pose.pose.orientation.x = pose_msg->pose.orientation.x;
+  odom_msg.pose.pose.orientation.y = pose_msg->pose.orientation.y;
+  odom_msg.pose.pose.orientation.z = pose_msg->pose.orientation.z;
+  odom_msg.pose.pose.orientation.w = pose_msg->pose.orientation.w;
+
+  odom_msg.twist.twist.linear.x = twist_msg->twist.linear.x;
+  odom_msg.twist.twist.linear.y = twist_msg->twist.linear.y;
+  odom_msg.twist.twist.linear.z = twist_msg->twist.linear.z;
+  odom_msg.twist.twist.angular.x = twist_msg->twist.angular.x;
+  odom_msg.twist.twist.angular.y = twist_msg->twist.angular.y;
+  odom_msg.twist.twist.angular.z = twist_msg->twist.angular.z;
+
+  odometry_filtered_->updateData(odom_msg);
 }
 
 } // namespace ardupilot_platform

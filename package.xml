@@ -11,6 +11,7 @@
 
   <depend>ament_cmake</depend>
   <depend>as2_core</depend>
+  <depend>message_filters</depend>
   <depend>rclcpp</depend>
 
   <depend>ardupilot_msgs</depend>
