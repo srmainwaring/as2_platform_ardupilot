@@ -24,6 +24,8 @@
 #include <as2_core/sensor.hpp>
 #include <as2_core/utils/tf_utils.hpp>
 
+#include <rmw/qos_profiles.h>
+
 using namespace std::chrono_literals;
 
 namespace ardupilot_platform
@@ -79,11 +81,11 @@ ArduPilotPlatform::ArduPilotPlatform()
   // message filters
   ap_pose_filtered_sub_ =
       std::make_unique<message_filters::Subscriber<geometry_msgs::msg::PoseStamped>>(
-          this, "/ap/pose/filtered");
+          this, "/ap/pose/filtered", rmw_qos_profile_sensor_data);
 
   ap_twist_filtered_sub_ =
       std::make_unique<message_filters::Subscriber<geometry_msgs::msg::TwistStamped>>(
-          this, "/ap/twist/filtered");
+          this, "/ap/twist/filtered", rmw_qos_profile_sensor_data);
 
   ap_odom_sync_ = std::make_unique<message_filters::TimeSynchronizer<geometry_msgs::msg::PoseStamped, geometry_msgs::msg::TwistStamped>>(
       *ap_pose_filtered_sub_, *ap_twist_filtered_sub_, 5);
@@ -197,7 +199,6 @@ bool ArduPilotPlatform::ownLand()
   return false;
 }
 
-
 void ArduPilotPlatform::apArm()
 {
   auto request = std::make_shared<ardupilot_msgs::srv::ArmMotors::Request>();
@@ -290,16 +291,19 @@ void ArduPilotPlatform::apPublishVehicleCommand()
 
 void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
+  // RCLCPP_INFO_STREAM(this->get_logger(), "Received GPS data");
   gps0_->updateData(*msg);
 }
 
 void ArduPilotPlatform::apBatteryCallback(const sensor_msgs::msg::BatteryState::ConstSharedPtr msg)
 {
+  // RCLCPP_INFO_STREAM(this->get_logger(), "Received battery data");
   battery0_->updateData(*msg);
 }
 
 void ArduPilotPlatform::apImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr msg)
 {
+  // RCLCPP_INFO_STREAM(this->get_logger(), "Received IMU data");
   imu0_->updateData(*msg);
 }
 
@@ -307,6 +311,8 @@ void ArduPilotPlatform::apOdomCallback(
     const geometry_msgs::msg::PoseStamped::ConstSharedPtr pose_msg,
     const geometry_msgs::msg::TwistStamped::ConstSharedPtr twist_msg)
 {
+  // RCLCPP_INFO_STREAM(this->get_logger(), "Received odom data");
+
   nav_msgs::msg::Odometry odom_msg;
 
   odom_msg.header.stamp    = pose_msg->header.stamp;
