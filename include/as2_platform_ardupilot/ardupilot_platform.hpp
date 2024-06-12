@@ -18,6 +18,7 @@
 #ifndef ARDUPILOT_PLATFORM_HPP_
 #define ARDUPILOT_PLATFORM_HPP_
 
+#include <cmath>
 #include <memory>
 #include <string>
 
@@ -73,10 +74,10 @@ private:
   std::string odom_frame_id_;
 
   // parameters
-  float mass_;
-  float max_thrust_;
-  float min_thrust_;
-  bool use_external_odom_ {true};
+  float mass_ {NAN};
+  float max_thrust_ {NAN};
+  float min_thrust_ {NAN};
+  bool use_external_odom_ {false};
 
   // as2_msgs::msg::ControlMode control_in_;
   // double yaw_rate_limit_ = M_PI_2;
