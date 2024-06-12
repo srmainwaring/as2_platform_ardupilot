@@ -26,6 +26,9 @@
 #include <as2_core/node.hpp>
 #include <as2_core/sensor.hpp>
 
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/publisher_options.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -79,6 +82,9 @@ private:
   float min_thrust_ {NAN};
   bool use_external_odom_ {false};
 
+  // true if the mode is supported 
+  bool is_valid_mode_ {false};
+
   // as2_msgs::msg::ControlMode control_in_;
   // double yaw_rate_limit_ = M_PI_2;
 
@@ -108,28 +114,36 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr ap_nav_sat_sub_;
   rclcpp::Subscription<sensor_msgs::msg::BatteryState>::SharedPtr ap_battery_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr ap_imu_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr ap_pose_filtered_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr ap_twist_filtered_sub_;
+  
+  // Ardupilot message filters
+  std::unique_ptr<message_filters::Subscriber<geometry_msgs::msg::PoseStamped>> ap_pose_filtered_sub_;
+  std::unique_ptr<message_filters::Subscriber<geometry_msgs::msg::TwistStamped>> ap_twist_filtered_sub_;
+  std::unique_ptr<message_filters::TimeSynchronizer<geometry_msgs::msg::PoseStamped, geometry_msgs::msg::TwistStamped>> ap_odom_sync_;
 
   // Ardupilot service clients
   rclcpp::Client<ardupilot_msgs::srv::ArmMotors>::SharedPtr ap_arm_motors_client_;
   rclcpp::Client<ardupilot_msgs::srv::ModeSwitch>::SharedPtr ap_mode_switch_client_;
 
+  // ArduPilot messages to populate
+  // geometry_msgs::msg::TwistStamped ap_cmd_vel_;
+  // geometry_msgs::msg::TwistStamped ap_cmd_gps_pose_pub_;
+
   // ArduPilot functions
   void apArm();
   void apDisarm();
-  void apPublishOffboardControlMode();
+  void apSetModeToGuided();
   void apPublishTrajectorySetpoint();
   void apPublishAttitudeSetpoint();
   void apPublishRatesSetpoint();
   void apPublishVehicleCommand();
 
   // ArduPilot callbacks
-  void apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::SharedPtr msg);
-  void apBatteryCallback(const sensor_msgs::msg::BatteryState::SharedPtr msg);
-  void apImuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
-  void apPoseFilteredCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
-  void apTwistFilteredCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
+  void apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg);
+  void apBatteryCallback(const sensor_msgs::msg::BatteryState::ConstSharedPtr msg);
+  void apImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr msg);  
+  void apOdomCallback(
+      const geometry_msgs::msg::PoseStamped::ConstSharedPtr pose_msg,
+      const geometry_msgs::msg::TwistStamped::ConstSharedPtr twist_msg);
 };
 
 } // namespace ardupilot_platform

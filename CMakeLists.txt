@@ -12,16 +12,17 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 
 find_package(as2_core REQUIRED)
+find_package(message_filters REQUIRED)
 find_package(rclcpp REQUIRED)
 
 find_package(ardupilot_msgs REQUIRED)
 find_package(as2_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 
 if (APPLE)
   # macOS Sonoma 14.5 aarch64 transitive dependency issue
@@ -52,9 +53,13 @@ target_include_directories(${PROJECT_NAME}_node
 )
 
 ament_target_dependencies(${PROJECT_NAME}_node
+  as2_core
+  message_filters
+  rclcpp
   ardupilot_msgs
   as2_msgs
   geometry_msgs
+  nav_msgs
   sensor_msgs
   std_msgs
   std_srvs
