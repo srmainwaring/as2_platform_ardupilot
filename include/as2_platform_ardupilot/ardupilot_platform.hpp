@@ -23,6 +23,7 @@
 
 #include <as2_core/aerial_platform.hpp>
 #include <as2_core/node.hpp>
+#include <as2_core/sensor.hpp>
 
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/publisher_options.hpp>
@@ -67,8 +68,15 @@ public:
   bool ownLand() override;
 
 private:
+  // frame ids
   std::string base_link_frame_id_;
   std::string odom_frame_id_;
+
+  // parameters
+  float mass_;
+  float max_thrust_;
+  float min_thrust_;
+  bool use_external_odom_ {true};
 
   // as2_msgs::msg::ControlMode control_in_;
   // double yaw_rate_limit_ = M_PI_2;
@@ -82,6 +90,14 @@ private:
 
   // void resetCommandTwistMsg();
   // void state_callback(const geometry_msgs::msg::TwistStamped::SharedPtr _twist_msg);
+
+  // Sensors
+  std::unique_ptr<as2::sensors::Barometer> barometer0_;
+  std::unique_ptr<as2::sensors::Battery> battery0_;
+  std::unique_ptr<as2::sensors::Compass> compass0_;
+  std::unique_ptr<as2::sensors::GPS> gps0_;
+  std::unique_ptr<as2::sensors::Imu> imu0_;
+  std::unique_ptr<as2::sensors::Odometry> odometry_filtered_;
 
   // Ardupilot publishers
   rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr ap_cmd_vel_pub_;
