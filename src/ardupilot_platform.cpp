@@ -187,17 +187,17 @@ void ArduPilotPlatform::ownStopPlatform()
   RCLCPP_ERROR(this->get_logger(), "Stop platform not supported");
 }
 
-bool ArduPilotPlatform::ownTakeoff()
-{
-  RCLCPP_ERROR(this->get_logger(), "Takeoff not supported");
-  return false;
-}
+// bool ArduPilotPlatform::ownTakeoff()
+// {
+//   RCLCPP_ERROR(this->get_logger(), "Takeoff not supported");
+//   return false;
+// }
 
-bool ArduPilotPlatform::ownLand()
-{
-  RCLCPP_ERROR(this->get_logger(), "Land not supported");
-  return false;
-}
+// bool ArduPilotPlatform::ownLand()
+// {
+//   RCLCPP_ERROR(this->get_logger(), "Land not supported");
+//   return false;
+// }
 
 void ArduPilotPlatform::apArm()
 {

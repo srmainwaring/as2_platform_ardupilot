@@ -68,8 +68,8 @@ public:
   bool ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &msg) override;
   void ownKillSwitch() override;
   void ownStopPlatform() override;
-  bool ownTakeoff() override;
-  bool ownLand() override;
+  // bool ownTakeoff() override;
+  // bool ownLand() override;
 
 private:
   // frame ids
