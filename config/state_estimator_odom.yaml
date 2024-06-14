@@ -1,5 +1,12 @@
 /**:
   ros__parameters:
+    # state_estimator_plugin_base
+    # base_frame: "base_link"
+    # global_ref_frame: "earth"
+    # odom_frame: "odom"
+    # map_frame: "map"
+    
+    # raw_odometry 
     odometry_topic: "sensor_measurements/odom"
     use_gps: false
     set_origin_on_start: false
