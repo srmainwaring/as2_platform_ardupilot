@@ -82,9 +82,6 @@ private:
   float min_thrust_ {NAN};
   bool use_external_odom_ {false};
 
-  // true if the mode is supported 
-  bool is_valid_mode_ {false};
-
   // as2_msgs::msg::ControlMode control_in_;
   // double yaw_rate_limit_ = M_PI_2;
 
