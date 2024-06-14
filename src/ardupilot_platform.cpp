@@ -169,11 +169,9 @@ bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMo
     default:
       RCLCPP_WARN(this->get_logger(), "Control mode %s not supported",
           as2::control_mode::controlModeToString(msg).c_str());
-      is_valid_mode_ = false;
       return false;
   }
 
-  is_valid_mode_ = true;
   return false;
 }
 
