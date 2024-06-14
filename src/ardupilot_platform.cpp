@@ -455,7 +455,10 @@ void ArduPilotPlatform::apPublishAttitudeSetpoint()
 
 void ArduPilotPlatform::apPublishRatesSetpoint()
 {
-  ap_cmd_vel_pub_->publish(command_twist_msg_);
+  // ArduPilot expects frame_id: `map`
+  geometry_msgs::msg::TwistStamped ap_cmd_vel = command_twist_msg_;
+  ap_cmd_vel.header.frame_id = "map";
+  ap_cmd_vel_pub_->publish(ap_cmd_vel);
 }
 
 void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
