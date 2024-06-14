@@ -96,7 +96,7 @@ class PlatformLaunch:
         """Generate a list of launch arguments."""
 
         # Default control modes config file.
-        control_modes = PathJoinSubstitution(
+        control_modes_file = PathJoinSubstitution(
             [FindPackageShare("as2_platform_ardupilot"), "config", "control_modes.yaml"]
         )
 
@@ -105,7 +105,7 @@ class PlatformLaunch:
             [
                 FindPackageShare("as2_platform_ardupilot"),
                 "config",
-                "platform_config_file.yaml",
+                "platform_config_odom.yaml",
             ]
         )
 
@@ -118,7 +118,7 @@ class PlatformLaunch:
             ),
             DeclareLaunchArgument(
                 "control_modes_file",
-                default_value=control_modes,
+                default_value=control_modes_file,
                 description="Platform control modes file",
             ),
             DeclareLaunchArgument(
