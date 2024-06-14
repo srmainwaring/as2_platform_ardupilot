@@ -98,7 +98,12 @@ install(DIRECTORY
   config
   DESTINATION share/${PROJECT_NAME})
 
-# install executables.
+# install rviz config.
+install(DIRECTORY
+  rviz
+  DESTINATION share/${PROJECT_NAME})
+
+  # install executables.
 install(TARGETS
   ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME})
