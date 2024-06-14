@@ -125,40 +125,124 @@ void ArduPilotPlatform::configureSensors()
 
 bool ArduPilotPlatform::ownSendCommand()
 {
+  /**
+   * yaw_mode
+   * NONE
+   * YAW_ANGLE
+   * YAW_SPEED
+   *
+   * control_mode
+   * UNSET
+   * HOVER
+   * POSITION
+   * SPEED
+   * SPEED_IN_A_PLANE
+   * ATTITUDE
+   * ACRO
+   * TRAJECTORY
+   * ACEL
+   *
+   * reference_frame
+   * UNDEFINED_FRAME
+   * LOCAL_ENU_FRAME
+   * BODY_FLU_FRAME
+   * GLOBAL_LAT_LONG_ASML
+   * 
+   * AerialPlatform has the following protected attributes
+   * 
+   * // set by the parameter cmd_freq
+   * // used to set the rate at which sendCommand() is called
+   * float cmd_freq_
+   * 
+   * // set by the parameter info_freq
+   * // used to set the rate at which publishPlatformInfo() is called
+   * float info_freq_
+   * 
+   * // updated in subscription to trajectory actuator commands
+   * as2_msgs::msg::TrajectoryPoint command_trajectory_msg_
+   * 
+   * // updated in subscription to pose actuator commands
+   * geometry_msgs::msg::PoseStamped command_pose_msg_
+   * 
+   * // updated in subscription to twist actuator commands
+   * geometry_msgs::msg::TwistStamped command_twist_msg_
+   * 
+   * // updated in subscription to thrust actuator commands
+   * as2_msgs::msg::Thrust command_thrust_msg_
+   * 
+   * // updated in protected methods
+   * as2_msgs::msg::PlatformInfo platform_info_msg_
+   * 
+   * // set true whenever a command message is received
+   * // set false when the offboard control mode changes
+   * bool has_new_references_ = false
+   * 
+   */
+
   // current control mode
-  // as2_msgs::msg::ControlMode platform_control_mode = this->getControlMode();
+  as2_msgs::msg::ControlMode platform_control_mode = this->getControlMode();
 
+  switch (platform_control_mode.control_mode)
+  {
+    case as2_msgs::msg::ControlMode::UNSET: {
+      return apSetModeToLoiter();
+    } break;
+    case as2_msgs::msg::ControlMode::HOVER: {
+      return false;
+    } break;
+    case as2_msgs::msg::ControlMode::POSITION: {
+      return false;
+    } break;
+    case as2_msgs::msg::ControlMode::SPEED: {
+      apPublishRatesSetpoint();
+    } break;
+    default: {
+      RCLCPP_WARN(this->get_logger(), "Control mode %s not supported",
+          as2::control_mode::controlModeToString(platform_control_mode).c_str());
+      return false;
+    }
+  }
 
-  // ap_cmd_vel_;
-
-  RCLCPP_ERROR(this->get_logger(), "Send command not supported");
-  return false;
+  return true;
 }
 
+// set the arming state of the vehicle
 bool ArduPilotPlatform::ownSetArmingState(bool state)
 {
   if (state) {
-    this->apArm();
+    return this->apArm();
   } else {
-    // set_disarm_ = true;
-    this->apDisarm();
+    return this->apDisarm();
   }
-  return true;
 }
 
-bool ArduPilotPlatform::ownSetOffboardControl(bool /*offboard*/)
+// set the control mode the vehicle to offboard (guided)
+bool ArduPilotPlatform::ownSetOffboardControl(bool offboard)
 {
-  RCLCPP_DEBUG(this->get_logger(), "Switching to GUIDED mode");
+  //! @todo(srmainwaring) record the initial control state prior,
+  // to offboard control being enabled.  
+  if (offboard == false) {
+      RCLCPP_INFO(this->get_logger(), "Switching to LOITER mode");
+      return apSetModeToLoiter();
+  }
 
   //! @todo(srmainwaring) the PX4 platform sets a rate setpoint 10x
   //  before switching to guided. Not replicated here.   
-  apSetModeToGuided();
-  return true;
+  RCLCPP_INFO(this->get_logger(), "Switching to GUIDED mode");
+  return apSetModeToGuided();
 }
 
+// set the vehicle offboard control mode
 bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode &msg)
 {
+
+  RCLCPP_INFO_STREAM(this->get_logger(), "Control mode: ["
+      << as2::control_mode::controlModeToString(msg) << "]");
+
   switch (msg.control_mode) {
+    case as2_msgs::msg::ControlMode::UNSET: {
+      return apSetModeToLoiter();
+    } break;
     case as2_msgs::msg::ControlMode::POSITION: {
       RCLCPP_INFO(this->get_logger(), "POSITION mode enabled");
     } break;
@@ -169,12 +253,10 @@ bool ArduPilotPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMo
       RCLCPP_INFO(this->get_logger(), "ATTITUDE mode enabled");
     } break;
     default:
-      RCLCPP_WARN(this->get_logger(), "Control mode %s not supported",
-          as2::control_mode::controlModeToString(msg).c_str());
       return false;
   }
 
-  return false;
+  return true;
 }
 
 void ArduPilotPlatform::ownKillSwitch()
@@ -199,7 +281,7 @@ void ArduPilotPlatform::ownStopPlatform()
 //   return false;
 // }
 
-void ArduPilotPlatform::apArm()
+bool ArduPilotPlatform::apArm()
 {
   auto request = std::make_shared<ardupilot_msgs::srv::ArmMotors::Request>();
   request->arm = true;
@@ -208,22 +290,41 @@ void ArduPilotPlatform::apArm()
     RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
         << ap_arm_motors_client_->get_service_name()
         << "] not available.");
-    return;
+    return false;
   }
 
-  bool got_response = false;
   using ServiceResponseFuture =
       rclcpp::Client<ardupilot_msgs::srv::ArmMotors>::SharedFuture;
-  auto callback = [&got_response, this](ServiceResponseFuture future) {
-    got_response = true;
+  auto callback = [this](ServiceResponseFuture future) {
     auto result = future.get();
     RCLCPP_INFO_STREAM(this->get_logger(), "Arm request status: "
         << result->result);
   };
-  auto future = ap_arm_motors_client_->async_send_request(request, callback);
+  auto future = ap_arm_motors_client_->async_send_request(request/*, callback*/);
+  return true;
+
+  //! @todo(srmainwaring) blocking
+  // bool did_arm = false;
+  // std::future_status status = future.wait_for(1s);
+  // switch (status) {
+  //   case std::future_status::ready: {
+  //       if (future.get()->result) {
+  //         did_arm = true;
+  //       }
+  //   } break;
+  //   default:
+  //     break;
+  // }
+
+  // if (did_arm) {
+  //   RCLCPP_INFO_STREAM(this->get_logger(), "Arm succeeded");
+  // } else {
+  //   RCLCPP_WARN_STREAM(this->get_logger(), "Arm failed");
+  // }
+  // return did_arm;
 }
 
-void ArduPilotPlatform::apDisarm()
+bool ArduPilotPlatform::apDisarm()
 {
   auto request = std::make_shared<ardupilot_msgs::srv::ArmMotors::Request>();
   request->arm = false;
@@ -232,45 +333,116 @@ void ArduPilotPlatform::apDisarm()
     RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
         << ap_arm_motors_client_->get_service_name()
         << "] not available.");
-    return;
+    return false;
   }
 
-  bool got_response = false;
   using ServiceResponseFuture =
       rclcpp::Client<ardupilot_msgs::srv::ArmMotors>::SharedFuture;
-  auto callback = [&got_response, this](ServiceResponseFuture future) {
-    got_response = true;
-    auto result = future.get();
+  auto callback = [this](ServiceResponseFuture future) {
     RCLCPP_INFO_STREAM(this->get_logger(), "Disarm request status: "
-        << result->result);
+        << future.get()->result);
   };
   auto future = ap_arm_motors_client_->async_send_request(request, callback);
+  return true;
+
+  //! @todo(srmainwaring) blocking
+  // bool did_disarm = false;
+  // std::future_status status = future.wait_for(1s);
+  // switch (status) {
+  //   case std::future_status::ready: {
+  //       if (future.get()->result) {
+  //         did_disarm = true;
+  //       }
+  //   } break;
+  //   default:
+  //     break;
+  // }
+
+  // if (did_disarm) {
+  //   RCLCPP_INFO_STREAM(this->get_logger(), "Disarm succeeded");
+  // } else {
+  //   RCLCPP_WARN_STREAM(this->get_logger(), "Disarm failed");
+  // }
+  // return did_disarm;
 }
 
-void ArduPilotPlatform::apSetModeToGuided()
+bool ArduPilotPlatform::apSetMode(uint8_t mode)
 {
   auto request = std::make_shared<ardupilot_msgs::srv::ModeSwitch::Request>();
-  request->mode = 4; // GUIDED = 4 for Copter
+  request->mode = mode;
 
   if (!ap_mode_switch_client_->wait_for_service(1s)) {
     RCLCPP_WARN_STREAM(this->get_logger(), "Service ["
         << ap_mode_switch_client_->get_service_name()
         << "] not available.");
-    return;
+    return false;
   }
 
-  bool got_response = false;
   using ServiceResponseFuture =
       rclcpp::Client<ardupilot_msgs::srv::ModeSwitch>::SharedFuture;
-  auto callback = [&got_response, this](ServiceResponseFuture future) {
-    got_response = true;
-    auto result = future.get();
-    RCLCPP_INFO_STREAM(this->get_logger(), "Mode switch request status: "
-        << result->status);
-    RCLCPP_INFO_STREAM(this->get_logger(), "Current mode: "
-        << result->curr_mode);
+  auto callback = [this](ServiceResponseFuture future) {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Mode switch request: status: "
+        << future.get()->status
+        << ", current mode: "
+        << static_cast<int>(future.get()->curr_mode));
   };
   auto future = ap_mode_switch_client_->async_send_request(request, callback);
+  return true;
+
+  //! @todo(srmainwaring) blocking
+  // bool did_change_mode = false;
+  // std::future_status status = future.wait_for(5s);
+  // switch (status) {
+  //   case std::future_status::ready: {
+  //       if (future.get()->status && future.get()->curr_mode == mode) {
+  //         RCLCPP_INFO_STREAM(this->get_logger(), "Mode switch succeeded: "
+  //             << static_cast<int>(future.get()->curr_mode));
+  //         did_change_mode = true;
+  //       } else {
+  //         RCLCPP_WARN_STREAM(this->get_logger(), "Mode switch failed: "
+  //             << static_cast<int>(future.get()->curr_mode));
+  //       }
+  //   } break;
+  //   case std::future_status::timeout: {
+  //         RCLCPP_WARN_STREAM(this->get_logger(), "Mode switch timed out: "
+  //             << static_cast<int>(mode));
+  //   } break;
+  //   default:
+  //     RCLCPP_WARN_STREAM(this->get_logger(), "Mode switch failed: "
+  //         << static_cast<int>(mode));
+  //     break;
+  // }
+  // return did_change_mode;
+}
+
+bool ArduPilotPlatform::apSetModeToGuided()
+{
+  constexpr uint8_t mode_guided = 4;
+  return apSetMode(mode_guided);
+}
+
+bool ArduPilotPlatform::apSetModeToLand()
+{
+  constexpr uint8_t mode_land = 9;
+  return apSetMode(mode_land);
+}
+
+bool ArduPilotPlatform::apSetModeToLoiter()
+{
+  constexpr uint8_t mode_loiter = 5;
+  return apSetMode(mode_loiter);
+}
+
+bool ArduPilotPlatform::apSetModeToRTL()
+{
+  constexpr uint8_t mode_rtl = 6;
+  return apSetMode(mode_rtl);
+}
+
+bool ArduPilotPlatform::apSetModeToStabilize()
+{
+  constexpr uint8_t mode_stabilize = 0;
+  return apSetMode(mode_stabilize);
 }
 
 void ArduPilotPlatform::apPublishTrajectorySetpoint()
@@ -283,10 +455,7 @@ void ArduPilotPlatform::apPublishAttitudeSetpoint()
 
 void ArduPilotPlatform::apPublishRatesSetpoint()
 {
-}
-
-void ArduPilotPlatform::apPublishVehicleCommand()
-{
+  ap_cmd_vel_pub_->publish(command_twist_msg_);
 }
 
 void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)

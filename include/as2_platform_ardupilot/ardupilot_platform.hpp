@@ -113,9 +113,15 @@ private:
   // geometry_msgs::msg::TwistStamped ap_cmd_gps_pose_pub_;
 
   // ArduPilot functions
-  void apArm();
-  void apDisarm();
-  void apSetModeToGuided();
+  bool apArm();
+  bool apDisarm();
+  bool apSetMode(uint8_t mode);
+  bool apSetModeToGuided();
+  bool apSetModeToLand();
+  bool apSetModeToLoiter();
+  bool apSetModeToRTL();
+  bool apSetModeToStabilize();
+
   void apPublishTrajectorySetpoint();
   void apPublishAttitudeSetpoint();
   void apPublishRatesSetpoint();
