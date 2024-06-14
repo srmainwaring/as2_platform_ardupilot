@@ -83,11 +83,11 @@ private:
   bool use_external_odom_ {false};
 
   // Sensors
-  std::unique_ptr<as2::sensors::Barometer> barometer0_;
-  std::unique_ptr<as2::sensors::Battery> battery0_;
-  std::unique_ptr<as2::sensors::Compass> compass0_;
-  std::unique_ptr<as2::sensors::GPS> gps0_;
-  std::unique_ptr<as2::sensors::Imu> imu0_;
+  std::unique_ptr<as2::sensors::Barometer> barometer_;
+  std::unique_ptr<as2::sensors::Battery> battery_;
+  std::unique_ptr<as2::sensors::Compass> compass_;
+  std::unique_ptr<as2::sensors::GPS> gps_;
+  std::unique_ptr<as2::sensors::Imu> imu_;
   std::unique_ptr<as2::sensors::Odometry> odometry_filtered_;
 
   // Ardupilot publishers

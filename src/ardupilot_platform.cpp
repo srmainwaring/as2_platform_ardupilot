@@ -113,11 +113,13 @@ ArduPilotPlatform::~ArduPilotPlatform()
 
 void ArduPilotPlatform::configureSensors()
 {
-  barometer0_ = std::make_unique<as2::sensors::Barometer>("barometer0", this);
-  battery0_ = std::make_unique<as2::sensors::Battery>("battery0", this);
-  compass0_ = std::make_unique<as2::sensors::Compass>("compass0", this);
-  gps0_ = std::make_unique<as2::sensors::GPS>("gps0", this);
-  imu0_ = std::make_unique<as2::sensors::Imu>("imu0", this);
+  //! @note the aerial platform expects sensor topics to have standard names
+  //  and currently does not support multiple instances
+  barometer_ = std::make_unique<as2::sensors::Barometer>("barometer", this);
+  battery_ = std::make_unique<as2::sensors::Battery>("battery", this);
+  compass_ = std::make_unique<as2::sensors::Compass>("compass", this);
+  gps_ = std::make_unique<as2::sensors::GPS>("gps", this);
+  imu_ = std::make_unique<as2::sensors::Imu>("imu", this);
   odometry_filtered_ = std::make_unique<as2::sensors::Odometry>("odom", this);
 }
 
@@ -290,19 +292,19 @@ void ArduPilotPlatform::apPublishVehicleCommand()
 void ArduPilotPlatform::apNavSatFixCallback(const sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
   // RCLCPP_INFO_STREAM(this->get_logger(), "Received GPS data");
-  gps0_->updateData(*msg);
+  gps_->updateData(*msg);
 }
 
 void ArduPilotPlatform::apBatteryCallback(const sensor_msgs::msg::BatteryState::ConstSharedPtr msg)
 {
   // RCLCPP_INFO_STREAM(this->get_logger(), "Received battery data");
-  battery0_->updateData(*msg);
+  battery_->updateData(*msg);
 }
 
 void ArduPilotPlatform::apImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr msg)
 {
   // RCLCPP_INFO_STREAM(this->get_logger(), "Received IMU data");
-  imu0_->updateData(*msg);
+  imu_->updateData(*msg);
 }
 
 void ArduPilotPlatform::apOdomCallback(
