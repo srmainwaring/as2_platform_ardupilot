@@ -82,19 +82,6 @@ private:
   float min_thrust_ {NAN};
   bool use_external_odom_ {false};
 
-  // as2_msgs::msg::ControlMode control_in_;
-  // double yaw_rate_limit_ = M_PI_2;
-
-  // bool enable_takeoff_           = false;
-  // bool enable_land_              = false;
-  // bool state_received_           = false;
-  // double current_height_         = 0.0;
-  // double current_vertical_speed_ = 0.0;
-  // std::shared_ptr<as2::tf::TfHandler> tf_handler_;
-
-  // void resetCommandTwistMsg();
-  // void state_callback(const geometry_msgs::msg::TwistStamped::SharedPtr _twist_msg);
-
   // Sensors
   std::unique_ptr<as2::sensors::Barometer> barometer0_;
   std::unique_ptr<as2::sensors::Battery> battery0_;
