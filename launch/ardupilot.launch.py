@@ -24,10 +24,45 @@ Show launch arguments:
 
 ros2 launch as2_platform_ardupilot ardupilot.launch.py --show-args
 """
-from launch import LaunchDescription
+from pathlib import Path
+
 from as2_platform_ardupilot.launch import PlatformLaunch
+
+from ament_index_python.packages import get_package_share_directory
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
+
+from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
     """Generate a launch description for the ArduPilot platform."""
-    return PlatformLaunch.generate_launch_description()
+
+    pkg_as2_platform_ardupilot = get_package_share_directory("as2_platform_ardupilot")
+
+    # ardupilot platform
+    ardupilot_platform = PlatformLaunch.generate_launch_description()
+
+    # RViz.
+    rviz = Node(
+        package="rviz2",
+        executable="rviz2",
+        arguments=[
+            "-d",
+            f'{Path(pkg_as2_platform_ardupilot) / "rviz" / "config.rviz"}',
+        ],
+        condition=IfCondition(LaunchConfiguration("rviz")),
+    )
+
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "rviz", default_value="false", description="Open RViz."
+            ),
+            ardupilot_platform,
+            rviz,
+        ]
+    )
